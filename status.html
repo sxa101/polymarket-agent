@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Status - Polymarket Trading Agent</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 2rem;
+            margin: 0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #00ff00;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .status-card {
+            background: #2a2a2a;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+        
+        .status-card h3 {
+            color: #00ff00;
+            margin-top: 0;
+            border-bottom: 1px solid #444;
+            padding-bottom: 0.5rem;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #333;
+        }
+        
+        .status-item:last-child {
+            border-bottom: none;
+        }
+        
+        .status-value {
+            font-weight: bold;
+        }
+        
+        .status-success { color: #00ff00; }
+        .status-error { color: #ff4444; }
+        .status-warning { color: #ffaa00; }
+        .status-info { color: #44aaff; }
+        
+        .log-console {
+            background: #000;
+            border: 2px solid #00ff00;
+            border-radius: 8px;
+            padding: 1rem;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+        }
+        
+        .log-entry {
+            margin: 0.25rem 0;
+            padding: 0.25rem;
+        }
+        
+        .log-timestamp {
+            color: #666;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+        
+        button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            background: #00cc00;
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .demo-indicator {
+            background: linear-gradient(45deg, #ff6b35, #ff8c35);
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 2rem;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .loading {
+            color: #ffaa00;
+            font-style: italic;
+        }
+        
+        pre {
+            background: #2a2a2a;
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Polymarket Trading Agent - Live Status</h1>
+        
+        <div id="demo-indicator" class="demo-indicator" style="display: none;">
+            🎮 DEMO MODE ACTIVE - Using Simulated Data
+        </div>
+        
+        <div class="actions">
+            <button onclick="refreshStatus()">Refresh Status</button>
+            <button onclick="loadDemoStrategy()" id="demo-btn" disabled>Load Demo Strategy</button>
+            <button onclick="viewMainApp()">Open Trading Agent</button>
+            <button onclick="toggleConsole()">Toggle Console</button>
+        </div>
+        
+        <div class="status-grid">
+            <div class="status-card">
+                <h3>🏗️ System Status</h3>
+                <div id="system-status">
+                    <div class="status-item loading">Checking system status...</div>
+                </div>
+            </div>
+            
+            <div class="status-card">
+                <h3>💾 Database Status</h3>
+                <div id="database-status">
+                    <div class="status-item loading">Checking database...</div>
+                </div>
+            </div>
+            
+            <div class="status-card">
+                <h3>🌐 API Status</h3>
+                <div id="api-status">
+                    <div class="status-item loading">Checking API...</div>
+                </div>
+            </div>
+            
+            <div class="status-card">
+                <h3>📊 Market Data</h3>
+                <div id="market-status">
+                    <div class="status-item loading">Loading markets...</div>
+                </div>
+            </div>
+            
+            <div class="status-card">
+                <h3>🎯 Trading Engine</h3>
+                <div id="trading-status">
+                    <div class="status-item loading">Checking engine...</div>
+                </div>
+            </div>
+            
+            <div class="status-card">
+                <h3>📈 Strategies</h3>
+                <div id="strategy-status">
+                    <div class="status-item loading">Loading strategies...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="status-card">
+            <h3>📝 Live Console</h3>
+            <div id="log-console" class="log-console"></div>
+        </div>
+        
+        <div class="status-card" id="debug-info" style="display: none;">
+            <h3>🔧 Debug Information</h3>
+            <pre id="debug-data"></pre>
+        </div>
+    </div>
+
+    <script type="module">
+        import { DemoDataProvider } from './js/demo/demo-data.js';
+        
+        let tradingAgent = null;
+        let updateInterval = null;
+        let logEntries = [];
+        
+        // Initialize status monitoring
+        window.addEventListener('DOMContentLoaded', async () => {
+            await initializeAgent();
+            startStatusMonitoring();
+        });
+        
+        async function initializeAgent() {
+            try {
+                // Wait for main agent to initialize
+                let attempts = 0;
+                while (!window.tradingAgent && attempts < 50) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    attempts++;
+                }
+                
+                if (window.tradingAgent) {
+                    tradingAgent = window.tradingAgent;
+                    log('Connected to main trading agent', 'success');
+                } else {
+                    log('Main trading agent not found, creating status-only version', 'warning');
+                    // Create minimal agent for status monitoring
+                    tradingAgent = { 
+                        getStatus: () => ({ 
+                            isInitialized: false, 
+                            isDemoMode: true,
+                            error: 'Main agent not loaded'
+                        })
+                    };
+                }
+                
+                await updateAllStatus();
+                
+            } catch (error) {
+                log('Failed to initialize agent: ' + error.message, 'error');
+            }
+        }
+        
+        async function updateAllStatus() {
+            try {
+                if (tradingAgent && tradingAgent.getStatus) {
+                    const status = tradingAgent.getStatus();
+                    
+                    // Show demo indicator if in demo mode
+                    const demoIndicator = document.getElementById('demo-indicator');
+                    if (status.isDemoMode) {
+                        demoIndicator.style.display = 'block';
+                        document.getElementById('demo-btn').disabled = false;
+                    }
+                    
+                    await updateSystemStatus(status);
+                    await updateDatabaseStatus();
+                    await updateAPIStatus();
+                    await updateMarketStatus();
+                    await updateTradingStatus();
+                    await updateStrategyStatus();
+                    
+                    document.getElementById('debug-data').textContent = JSON.stringify(status, null, 2);
+                    document.getElementById('debug-info').style.display = 'block';
+                }
+            } catch (error) {
+                log('Error updating status: ' + error.message, 'error');
+            }
+        }
+        
+        async function updateSystemStatus(status) {
+            const container = document.getElementById('system-status');
+            container.innerHTML = `
+                <div class="status-item">
+                    <span>Initialized:</span>
+                    <span class="status-value ${status.isInitialized ? 'status-success' : 'status-error'}">
+                        ${status.isInitialized ? '✅ Yes' : '❌ No'}
+                    </span>
+                </div>
+                <div class="status-item">
+                    <span>Mode:</span>
+                    <span class="status-value ${status.isDemoMode ? 'status-warning' : 'status-success'}">
+                        ${status.isDemoMode ? '🎮 Demo' : '🔴 Live'}
+                    </span>
+                </div>
+                <div class="status-item">
+                    <span>Components:</span>
+                    <span class="status-value status-info">${status.components ? status.components.length : 0}</span>
+                </div>
+                <div class="status-item">
+                    <span>Errors:</span>
+                    <span class="status-value ${status.errors && status.errors.length > 0 ? 'status-error' : 'status-success'}">
+                        ${status.errors ? status.errors.length : 0}
+                    </span>
+                </div>
+            `;
+        }
+        
+        async function updateDatabaseStatus() {
+            const container = document.getElementById('database-status');
+            
+            try {
+                if (tradingAgent && tradingAgent.getComponent) {
+                    const db = tradingAgent.getComponent('database');
+                    if (db) {
+                        // Test basic operations
+                        await db.saveConfig('status_test', Date.now());
+                        const testValue = await db.getConfig('status_test');
+                        
+                        container.innerHTML = `
+                            <div class="status-item">
+                                <span>Connection:</span>
+                                <span class="status-value status-success">✅ Connected</span>
+                            </div>
+                            <div class="status-item">
+                                <span>Read/Write:</span>
+                                <span class="status-value status-success">✅ Working</span>
+                            </div>
+                            <div class="status-item">
+                                <span>Last Test:</span>
+                                <span class="status-value status-info">${new Date(testValue).toLocaleTimeString()}</span>
+                            </div>
+                        `;
+                    } else {
+                        throw new Error('Database component not found');
+                    }
+                } else {
+                    throw new Error('Trading agent not available');
+                }
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="status-item">
+                        <span>Status:</span>
+                        <span class="status-value status-error">❌ Error</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Error:</span>
+                        <span class="status-value status-error">${error.message}</span>
+                    </div>
+                `;
+            }
+        }
+        
+        async function updateAPIStatus() {
+            const container = document.getElementById('api-status');
+            
+            try {
+                if (tradingAgent && tradingAgent.getComponent) {
+                    const api = tradingAgent.getComponent('api');
+                    if (api) {
+                        const markets = await api.getActiveMarkets();
+                        
+                        container.innerHTML = `
+                            <div class="status-item">
+                                <span>Connection:</span>
+                                <span class="status-value status-success">✅ Connected</span>
+                            </div>
+                            <div class="status-item">
+                                <span>Markets Available:</span>
+                                <span class="status-value status-success">${markets.length}</span>
+                            </div>
+                            <div class="status-item">
+                                <span>Type:</span>
+                                <span class="status-value status-warning">🎮 Demo API</span>
+                            </div>
+                        `;
+                    } else {
+                        throw new Error('API component not found');
+                    }
+                } else {
+                    throw new Error('Trading agent not available');
+                }
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="status-item">
+                        <span>Status:</span>
+                        <span class="status-value status-error">❌ Error</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Error:</span>
+                        <span class="status-value status-error">${error.message}</span>
+                    </div>
+                `;
+            }
+        }
+        
+        async function updateMarketStatus() {
+            const container = document.getElementById('market-status');
+            
+            try {
+                if (tradingAgent && tradingAgent.getComponent) {
+                    const api = tradingAgent.getComponent('api');
+                    const database = tradingAgent.getComponent('database');
+                    
+                    if (api && database) {
+                        const activeMarkets = await api.getActiveMarkets();
+                        const storedMarkets = await database.getActiveMarkets();
+                        
+                        container.innerHTML = `
+                            <div class="status-item">
+                                <span>Active Markets:</span>
+                                <span class="status-value status-success">${activeMarkets.length}</span>
+                            </div>
+                            <div class="status-item">
+                                <span>Stored Markets:</span>
+                                <span class="status-value status-info">${storedMarkets.length}</span>
+                            </div>
+                            <div class="status-item">
+                                <span>Assets:</span>
+                                <span class="status-value status-info">${[...new Set(activeMarkets.map(m => m.asset))].join(', ')}</span>
+                            </div>
+                        `;
+                    } else {
+                        throw new Error('Market components not found');
+                    }
+                } else {
+                    throw new Error('Trading agent not available');
+                }
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="status-item">
+                        <span>Status:</span>
+                        <span class="status-value status-error">❌ Error</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Error:</span>
+                        <span class="status-value status-error">${error.message}</span>
+                    </div>
+                `;
+            }
+        }
+        
+        async function updateTradingStatus() {
+            const container = document.getElementById('trading-status');
+            
+            try {
+                if (tradingAgent && tradingAgent.getComponent) {
+                    const engine = tradingAgent.getComponent('tradingEngine');
+                    if (engine) {
+                        const status = engine.getStatus();
+                        const positions = engine.getPositions();
+                        const orders = engine.getActiveOrders();
+                        
+                        container.innerHTML = `
+                            <div class="status-item">
+                                <span>Engine Status:</span>
+                                <span class="status-value ${status.isRunning ? 'status-success' : 'status-warning'}">
+                                    ${status.isRunning ? '🟢 Running' : '🟡 Stopped'}
+                                </span>
+                            </div>
+                            <div class="status-item">
+                                <span>Active Orders:</span>
+                                <span class="status-value status-info">${orders.length}</span>
+                            </div>
+                            <div class="status-item">
+                                <span>Positions:</span>
+                                <span class="status-value status-info">${positions.length}</span>
+                            </div>
+                        `;
+                    } else {
+                        throw new Error('Trading engine not found');
+                    }
+                } else {
+                    throw new Error('Trading agent not available');
+                }
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="status-item">
+                        <span>Status:</span>
+                        <span class="status-value status-error">❌ Error</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Error:</span>
+                        <span class="status-value status-error">${error.message}</span>
+                    </div>
+                `;
+            }
+        }
+        
+        async function updateStrategyStatus() {
+            const container = document.getElementById('strategy-status');
+            
+            try {
+                if (tradingAgent && tradingAgent.getComponent) {
+                    const database = tradingAgent.getComponent('database');
+                    if (database) {
+                        const strategies = await database.getActiveStrategies();
+                        
+                        container.innerHTML = `
+                            <div class="status-item">
+                                <span>Active Strategies:</span>
+                                <span class="status-value status-info">${strategies.length}</span>
+                            </div>
+                            <div class="status-item">
+                                <span>Types Available:</span>
+                                <span class="status-value status-success">4</span>
+                            </div>
+                            <div class="status-item">
+                                <span>Demo Ready:</span>
+                                <span class="status-value status-success">✅ Yes</span>
+                            </div>
+                        `;
+                    } else {
+                        throw new Error('Database component not found');
+                    }
+                } else {
+                    throw new Error('Trading agent not available');
+                }
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="status-item">
+                        <span>Status:</span>
+                        <span class="status-value status-error">❌ Error</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Error:</span>
+                        <span class="status-value status-error">${error.message}</span>
+                    </div>
+                `;
+            }
+        }
+        
+        function startStatusMonitoring() {
+            // Update every 10 seconds
+            updateInterval = setInterval(async () => {
+                await updateAllStatus();
+            }, 10000);
+            
+            log('Status monitoring started', 'success');
+        }
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = {
+                timestamp,
+                message,
+                type
+            };
+            
+            logEntries.push(entry);
+            
+            // Keep only last 50 entries
+            if (logEntries.length > 50) {
+                logEntries = logEntries.slice(-50);
+            }
+            
+            updateLogDisplay();
+        }
+        
+        function updateLogDisplay() {
+            const console = document.getElementById('log-console');
+            console.innerHTML = logEntries.map(entry => `
+                <div class="log-entry status-${entry.type}">
+                    <span class="log-timestamp">[${entry.timestamp}]</span>
+                    ${entry.message}
+                </div>
+            `).join('');
+            
+            // Scroll to bottom
+            console.scrollTop = console.scrollHeight;
+        }
+        
+        // Global functions for buttons
+        window.refreshStatus = async function() {
+            log('Refreshing status...', 'info');
+            await updateAllStatus();
+            log('Status refreshed', 'success');
+        };
+        
+        window.loadDemoStrategy = async function() {
+            try {
+                if (tradingAgent && tradingAgent.loadDemoStrategy) {
+                    await tradingAgent.loadDemoStrategy();
+                    log('Demo strategy loaded successfully', 'success');
+                    await updateAllStatus();
+                } else {
+                    log('Demo strategy loading not available', 'error');
+                }
+            } catch (error) {
+                log('Failed to load demo strategy: ' + error.message, 'error');
+            }
+        };
+        
+        window.viewMainApp = function() {
+            window.open('/', '_blank');
+        };
+        
+        window.toggleConsole = function() {
+            const debugInfo = document.getElementById('debug-info');
+            debugInfo.style.display = debugInfo.style.display === 'none' ? 'block' : 'none';
+        };
+        
+        // Initial log
+        log('Status monitoring system initialized', 'success');
+    </script>
+</body>
+</html>

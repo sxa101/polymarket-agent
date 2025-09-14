@@ -1,0 +1,52 @@
+{
+  "name": "polymarket-15min-trading-agent",
+  "version": "1.0.0",
+  "description": "Browser-based trading agent for Polymarket's 15-minute crypto prediction markets",
+  "main": "index.html",
+  "type": "module",
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "serve": "python3 -m http.server 8000",
+    "start": "npm run serve",
+    "lint": "echo 'Linting JavaScript files...' && find js -name '*.js' -exec node -c {} \\;",
+    "build": "echo 'Building project...' && npm run lint",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "test:headed": "playwright test --headed",
+    "install-playwright": "npx playwright install",
+    "clean": "echo 'Cleaning build artifacts...' && echo 'No artifacts to clean'"
+  },
+  "keywords": [
+    "polymarket",
+    "trading",
+    "crypto",
+    "prediction-markets",
+    "browser-based",
+    "javascript",
+    "web3",
+    "indexeddb"
+  ],
+  "author": "Polymarket Trading Agent",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ],
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  },
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/polymarket-15min-trading-agent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/polymarket-15min-trading-agent/issues"
+  },
+  "homepage": "https://github.com/your-username/polymarket-15min-trading-agent#readme"
+}

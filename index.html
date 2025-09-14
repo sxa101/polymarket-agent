@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polymarket 15-Min Crypto Trading Agent</title>
+    <link rel="stylesheet" href="styles.css">
+    <meta name="description" content="Browser-based trading agent for Polymarket's 15-minute crypto prediction markets">
+</head>
+<body>
+    <div id="app">
+        <div id="demo-banner" class="demo-banner" style="display: none;">
+            🎮 DEMO MODE - Simulated Data Only - No Real Trading
+            <button id="toggle-demo" class="demo-toggle">Switch to Live Mode</button>
+        </div>
+        
+        <header class="header">
+            <h1>Polymarket Trading Agent</h1>
+            <div class="connection-status">
+                <div id="demo-status" class="status-indicator">Mode: Demo</div>
+                <div id="api-status" class="status-indicator">API: Connecting</div>
+                <div id="wallet-status" class="status-indicator">Wallet: Not Connected</div>
+                <div id="market-status" class="status-indicator">Markets: Disconnected</div>
+                <button id="settings-btn" class="settings-btn" title="Configuration Settings">⚙️</button>
+            </div>
+        </header>
+
+        <nav class="navigation">
+            <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+            <button class="nav-btn" data-view="markets">Markets</button>
+            <button class="nav-btn" data-view="strategies">Strategies</button>
+            <button class="nav-btn" data-view="portfolio">Portfolio</button>
+            <button class="nav-btn" data-view="analytics">Analytics</button>
+        </nav>
+
+        <main class="main-content">
+            <div id="dashboard-view" class="view active">
+                <div class="dashboard-grid">
+                    <div class="widget" id="active-markets">
+                        <h3>Active 15-Min Markets</h3>
+                        <div class="market-list"></div>
+                    </div>
+                    <div class="widget" id="positions">
+                        <h3>Active Positions</h3>
+                        <div class="positions-list"></div>
+                    </div>
+                    <div class="widget" id="pnl-summary">
+                        <h3>P&L Summary</h3>
+                        <div class="pnl-metrics"></div>
+                    </div>
+                    <div class="widget" id="recent-trades">
+                        <h3>Recent Trades</h3>
+                        <div class="trades-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="markets-view" class="view">
+                <div class="markets-container">
+                    <div class="market-filters">
+                        <input type="text" id="asset-filter" placeholder="Filter by asset (BTC, ETH, SOL...)">
+                        <button id="refresh-markets">Refresh Markets</button>
+                    </div>
+                    <div id="markets-grid"></div>
+                </div>
+            </div>
+
+            <div id="strategies-view" class="view">
+                <div class="strategies-container">
+                    <div class="strategy-controls">
+                        <button id="create-strategy">Create New Strategy</button>
+                        <button id="backtest-all">Run Backtests</button>
+                    </div>
+                    <div id="strategies-list"></div>
+                </div>
+            </div>
+
+            <div id="portfolio-view" class="view">
+                <div class="portfolio-summary">
+                    <div class="balance-info">
+                        <h3>Portfolio Balance</h3>
+                        <div id="total-balance">$0.00</div>
+                    </div>
+                    <div class="portfolio-breakdown"></div>
+                </div>
+                <div id="transaction-history"></div>
+            </div>
+
+            <div id="analytics-view" class="view">
+                <div class="analytics-dashboard">
+                    <div class="performance-metrics">
+                        <h3>Performance Analytics</h3>
+                        <canvas id="performance-chart"></canvas>
+                    </div>
+                    <div class="strategy-comparison">
+                        <h3>Strategy Performance</h3>
+                        <div id="strategy-stats"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Modal</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-content" id="modal-content"></div>
+        </div>
+    </div>
+
+    <!-- DEBUGGING PANEL -->
+    <div id="debug-panel" style="position: fixed; bottom: 10px; right: 10px; background: #1a1a1a; color: #00ff00; padding: 15px; font-family: monospace; font-size: 12px; z-index: 9999; border-radius: 8px; max-width: 400px; max-height: 300px; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <strong style="color: #ffff00;">🚨 DEBUGGING PANEL</strong>
+            <button onclick="toggleDebugPanel()" style="background: #333; color: white; border: none; padding: 2px 6px; border-radius: 3px; cursor: pointer;">Toggle</button>
+        </div>
+        <div id="debug-output">Initializing diagnostics...</div>
+        <div style="margin-top: 10px;">
+            <button onclick="runFullDiagnostics()" style="background: #007acc; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-right: 5px;">🔍 Full Diagnostics</button>
+            <button onclick="testWalletConnection()" style="background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-right: 5px;">👛 Test Wallet</button>
+            <button onclick="testRealAPI()" style="background: #ffc107; color: black; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">🌐 Test API</button>
+        </div>
+    </div>
+
+    <script>
+        // Debug Panel Functions
+        let debugPanelVisible = true;
+        
+        function toggleDebugPanel() {
+            const panel = document.getElementById('debug-panel');
+            if (debugPanelVisible) {
+                panel.style.transform = 'translateY(calc(100% - 40px))';
+                debugPanelVisible = false;
+            } else {
+                panel.style.transform = 'translateY(0)';
+                debugPanelVisible = true;
+            }
+        }
+
+        function runFullDiagnostics() {
+            const output = document.getElementById('debug-output');
+            const diagnostics = [];
+            
+            try {
+                // Check basic environment
+                diagnostics.push(`🌍 <strong>ENVIRONMENT:</strong>`);
+                diagnostics.push(`├─ URL: ${window.location.href}`);
+                diagnostics.push(`├─ Protocol: ${window.location.protocol}`);
+                diagnostics.push(`└─ Host: ${window.location.host}`);
+                diagnostics.push(``);
+                
+                // Check MetaMask
+                diagnostics.push(`🦊 <strong>METAMASK:</strong>`);
+                diagnostics.push(`├─ Available: ${typeof window.ethereum !== 'undefined' ? '✅ YES' : '❌ NO'}`);
+                diagnostics.push(`├─ Is MetaMask: ${window.ethereum?.isMetaMask ? '✅ YES' : '❌ NO'}`);
+                diagnostics.push(`└─ Provider: ${window.ethereum ? '✅ FOUND' : '❌ MISSING'}`);
+                diagnostics.push(``);
+                
+                // Check Configuration
+                diagnostics.push(`⚙️ <strong>CONFIGURATION:</strong>`);
+                if (typeof ProductionConfig !== 'undefined') {
+                    diagnostics.push(`├─ Config Loaded: ✅ YES`);
+                    diagnostics.push(`├─ Demo Mode: ${ProductionConfig.FEATURES?.DEMO_MODE ? '🎮 YES' : '🚀 NO'}`);
+                    diagnostics.push(`├─ Trading Enabled: ${ProductionConfig.FEATURES?.ENABLE_TRADING ? '✅ YES' : '❌ NO'}`);
+                    diagnostics.push(`├─ Testnet Mode: ${ProductionConfig.FEATURES?.TESTNET_MODE ? '🧪 YES' : '🌐 MAINNET'}`);
+                    diagnostics.push(`└─ Risk Management: ${ProductionConfig.FEATURES?.ENABLE_RISK_MANAGEMENT ? '✅ YES' : '❌ NO'}`);
+                } else {
+                    diagnostics.push(`├─ Config Loaded: ❌ NO - CRITICAL ERROR!`);
+                    diagnostics.push(`└─ This means ProductionConfig is not available globally`);
+                }
+                diagnostics.push(``);
+                
+                // Check App Instance
+                diagnostics.push(`🚀 <strong>APPLICATION:</strong>`);
+                if (window.tradingAgent) {
+                    diagnostics.push(`├─ App Instance: ✅ FOUND`);
+                    diagnostics.push(`├─ Demo Mode: ${window.tradingAgent.isDemoMode ? '🎮 YES' : '🚀 NO'}`);
+                    diagnostics.push(`├─ Initialized: ${window.tradingAgent.isInitialized ? '✅ YES' : '⏳ PENDING'}`);
+                    
+                    // Check components
+                    if (window.tradingAgent.components) {
+                        const comp = window.tradingAgent.components;
+                        diagnostics.push(`├─ Database: ${comp.database ? '✅ ' + comp.database.constructor.name : '❌ MISSING'}`);
+                        diagnostics.push(`├─ API: ${comp.api ? '✅ ' + comp.api.constructor.name : '❌ MISSING'}`);
+                        diagnostics.push(`├─ Wallet: ${comp.wallet ? '✅ ' + comp.wallet.constructor.name : '❌ MISSING'}`);
+                        diagnostics.push(`├─ WebSocket: ${comp.webSocket ? '✅ ' + comp.webSocket.constructor.name : '❌ MISSING'}`);
+                        diagnostics.push(`└─ Trading Engine: ${comp.tradingEngine ? '✅ ' + comp.tradingEngine.constructor.name : '❌ MISSING'}`);
+                    } else {
+                        diagnostics.push(`└─ Components: ❌ NOT INITIALIZED`);
+                    }
+                } else {
+                    diagnostics.push(`├─ App Instance: ❌ NOT FOUND`);
+                    diagnostics.push(`└─ Check console for initialization errors`);
+                }
+                diagnostics.push(``);
+                
+                // Check initialization status
+                if (window.tradingAgent?.initializationStatus) {
+                    diagnostics.push(`📊 <strong>INITIALIZATION STATUS:</strong>`);
+                    const status = window.tradingAgent.initializationStatus;
+                    Object.entries(status).forEach(([key, value]) => {
+                        const icon = value === 'success' ? '✅' : value === 'error' ? '❌' : '⏳';
+                        diagnostics.push(`├─ ${key}: ${icon} ${value.toUpperCase()}`);
+                    });
+                    diagnostics.push(``);
+                }
+                
+                // Check errors
+                if (window.tradingAgent?.errors?.length > 0) {
+                    diagnostics.push(`🚨 <strong>ERRORS FOUND:</strong>`);
+                    window.tradingAgent.errors.forEach((error, index) => {
+                        diagnostics.push(`├─ ${error.component}: ${error.error}`);
+                    });
+                }
+                
+            } catch (error) {
+                diagnostics.push(`🚨 <strong>DIAGNOSTIC ERROR:</strong> ${error.message}`);
+            }
+            
+            output.innerHTML = diagnostics.join('<br>');
+        }
+
+        async function testWalletConnection() {
+            const output = document.getElementById('debug-output');
+            output.innerHTML = `🧪 <strong>Testing Wallet Connection...</strong><br>`;
+            
+            try {
+                if (typeof window.ethereum === 'undefined') {
+                    output.innerHTML += `❌ MetaMask not available<br>`;
+                    return;
+                }
+                
+                if (!window.tradingAgent?.components?.wallet) {
+                    output.innerHTML += `❌ Wallet Manager not initialized<br>`;
+                    return;
+                }
+                
+                output.innerHTML += `⏳ Connecting to wallet...<br>`;
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                
+                if (accounts.length > 0) {
+                    output.innerHTML += `✅ Wallet connected: ${accounts[0]}<br>`;
+                    output.innerHTML += `🔗 Address: ${accounts[0].slice(0,6)}...${accounts[0].slice(-4)}<br>`;
+                    
+                    // Test network
+                    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                    output.innerHTML += `🌐 Network: ${chainId} (${chainId === '0x89' ? 'Polygon' : chainId === '0x13881' ? 'Mumbai' : 'Other'})<br>`;
+                } else {
+                    output.innerHTML += `❌ No accounts available<br>`;
+                }
+                
+            } catch (error) {
+                output.innerHTML += `❌ Wallet connection failed: ${error.message}<br>`;
+            }
+        }
+
+        async function testRealAPI() {
+            const output = document.getElementById('debug-output');
+            output.innerHTML = `🧪 <strong>Testing Real API Connection...</strong><br>`;
+            
+            try {
+                if (!window.tradingAgent?.components?.api) {
+                    output.innerHTML += `❌ API not initialized<br>`;
+                    return;
+                }
+                
+                const api = window.tradingAgent.components.api;
+                output.innerHTML += `⏳ API Type: ${api.constructor.name}<br>`;
+                
+                if (api.constructor.name === 'MockAPI') {
+                    output.innerHTML += `🎮 Using demo API - not real Polymarket<br>`;
+                    return;
+                }
+                
+                if (api.constructor.name === 'RealPolymarketAPI') {
+                    output.innerHTML += `🚀 Real Polymarket API detected!<br>`;
+                    output.innerHTML += `⏳ Testing API health...<br>`;
+                    
+                    // Test health check
+                    const healthy = await api.healthCheck();
+                    output.innerHTML += `📊 Health check: ${healthy ? '✅ PASS' : '❌ FAIL'}<br>`;
+                    
+                    if (healthy) {
+                        output.innerHTML += `⏳ Fetching real markets...<br>`;
+                        const markets = await api.fetchRealCryptoMarkets();
+                        output.innerHTML += `📈 Found ${markets.length} real markets<br>`;
+                        
+                        if (markets.length > 0) {
+                            output.innerHTML += `💎 Sample market: ${markets[0].question.slice(0,50)}...<br>`;
+                        }
+                    }
+                }
+                
+            } catch (error) {
+                output.innerHTML += `❌ API test failed: ${error.message}<br>`;
+                console.error('API test error:', error);
+            }
+        }
+
+        // Auto-run diagnostics when page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                console.log("🔍 Running automatic diagnostics...");
+                runFullDiagnostics();
+            }, 3000); // Wait 3 seconds for app to initialize
+        });
+    </script>
+
+    <script type="module" src="js/app-working.js"></script>
+</body>
+</html>

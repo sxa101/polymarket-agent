@@ -1,0 +1,120 @@
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables and secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.key
+*.pem
+secrets.json
+config.json
+private-keys.txt
+
+# Wallet and crypto-related files
+wallets/
+keystore/
+mnemonic.txt
+seed.txt
+private-key.*
+wallet-backup.*
+*.wallet
+
+# API keys and tokens
+api-keys.txt
+tokens.json
+credentials.json
+auth-config.js
+api-secrets.*
+
+# Browser storage exports
+indexeddb-export/
+localstorage-backup/
+browser-data/
+user-data/
+trading-data-backup/
+
+# Logs
+logs/
+*.log
+debug.log
+error.log
+trading.log
+performance.log
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Operating system files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Build artifacts (future-proofing)
+dist/
+build/
+*.tgz
+*.tar.gz
+
+# Test artifacts
+test-results/
+playwright-report/
+test-output/
+coverage/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+
+# Trading-specific sensitive data
+trading-history-export/
+portfolio-snapshots/
+performance-reports/
+user-strategies.json
+custom-configs/
+personal-settings.json
+
+# Development artifacts
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+.vuepress/dist
+
+# Package manager lockfiles (optional, uncomment if needed)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Browser extension artifacts
+*.crx
+*.xpi
+
+# Deployment secrets
+deployment-config.json
+server-config.js
+production-secrets.*
+
+# Monitoring and analytics data
+analytics-data/
+metrics-export/
+system-health-logs/
