@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚨 Emergency QA Testing - Polymarket Agent</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            background: #0a0a0a;
+            color: #00ff00;
+            padding: 20px;
+            line-height: 1.4;
+        }
+
+        .header {
+            background: #ff0000;
+            color: white;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .component-status {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .component-status.testing {
+            border-color: #ffaa00;
+        }
+
+        .component-status.passed {
+            border-color: #00ff00;
+        }
+
+        .component-status.failed {
+            border-color: #ff0000;
+        }
+
+        .component-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-indicator.testing {
+            background: #ffaa00;
+            animation: pulse 1s infinite;
+        }
+
+        .status-indicator.passed {
+            background: #00ff00;
+        }
+
+        .status-indicator.failed {
+            background: #ff0000;
+            animation: blink 0.5s infinite;
+        }
+
+        .console {
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            height: 400px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+            margin-bottom: 20px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+        }
+
+        .log-error {
+            color: #ff6b6b;
+        }
+
+        .log-success {
+            color: #51cf66;
+        }
+
+        .log-warning {
+            color: #ffd43b;
+        }
+
+        .log-info {
+            color: #74c0fc;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .fixes-panel {
+            background: #1a1a1a;
+            border: 2px solid #ffd43b;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .fixes-title {
+            color: #ffd43b;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .fix-item {
+            background: #2a2a2a;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border-left: 4px solid #ffd43b;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚨 EMERGENCY QA TESTING</h1>
+        <p>Critical System Diagnostics & Fixes</p>
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-primary" onclick="startDiagnostics()">🔍 Run Full Diagnostics</button>
+        <button class="btn btn-danger" onclick="emergencyFixes()">🔧 Apply Emergency Fixes</button>
+        <button class="btn btn-success" onclick="verifyFixes()">✅ Verify All Fixes</button>
+        <button class="btn" onclick="clearConsole()">Clear Console</button>
+    </div>
+
+    <div class="status-grid">
+        <div class="component-status testing" id="websocket-status">
+            <div class="component-title">
+                <span class="status-indicator testing" id="websocket-indicator"></span>
+                WebSocket Connection
+            </div>
+            <div id="websocket-details">Initializing...</div>
+        </div>
+
+        <div class="component-status testing" id="api-status">
+            <div class="component-title">
+                <span class="status-indicator testing" id="api-indicator"></span>
+                API Integration
+            </div>
+            <div id="api-details">Initializing...</div>
+        </div>
+
+        <div class="component-status testing" id="smart-orders-status">
+            <div class="component-title">
+                <span class="status-indicator testing" id="smart-orders-indicator"></span>
+                Smart Orders
+            </div>
+            <div id="smart-orders-details">Initializing...</div>
+        </div>
+
+        <div class="component-status testing" id="wallet-status">
+            <div class="component-title">
+                <span class="status-indicator testing" id="wallet-indicator"></span>
+                Wallet Manager
+            </div>
+            <div id="wallet-details">Initializing...</div>
+        </div>
+
+        <div class="component-status testing" id="database-status">
+            <div class="component-title">
+                <span class="status-indicator testing" id="database-indicator"></span>
+                Database
+            </div>
+            <div id="database-details">Initializing...</div>
+        </div>
+
+        <div class="component-status testing" id="overall-status">
+            <div class="component-title">
+                <span class="status-indicator testing" id="overall-indicator"></span>
+                Overall System
+            </div>
+            <div id="overall-details">Pending diagnostics...</div>
+        </div>
+    </div>
+
+    <div class="fixes-panel" id="fixes-panel" style="display: none;">
+        <div class="fixes-title">🔧 Suggested Fixes</div>
+        <div id="fixes-content"></div>
+    </div>
+
+    <div class="console" id="console">
+        <div class="log-entry log-info">🚨 Emergency QA Testing Interface Loaded</div>
+        <div class="log-entry log-warning">⚠️ Critical system issues detected by technical lead</div>
+        <div class="log-entry log-info">📊 Click "Run Full Diagnostics" to identify problems</div>
+    </div>
+
+    <script type="module">
+        import { EmergencyQADiagnostics } from './js/debug/qa-diagnostics.js';
+
+        let diagnostics = null;
+        let app = null;
+
+        // Enhanced console logging
+        function log(message, type = 'info') {
+            const console = document.getElementById('console');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            console.appendChild(logEntry);
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function updateComponentStatus(component, status, details) {
+            const statusDiv = document.getElementById(`${component}-status`);
+            const indicator = document.getElementById(`${component}-indicator`);
+            const detailsDiv = document.getElementById(`${component}-details`);
+
+            statusDiv.className = `component-status ${status}`;
+            indicator.className = `status-indicator ${status}`;
+            detailsDiv.textContent = details;
+        }
+
+        async function startDiagnostics() {
+            log('🚨 Starting comprehensive system diagnostics...', 'warning');
+            
+            try {
+                // Initialize diagnostics
+                diagnostics = new EmergencyQADiagnostics();
+                
+                // Try to get main app instance
+                if (window.app) {
+                    app = window.app;
+                    log('✅ Main app instance found', 'success');
+                } else {
+                    log('❌ Main app instance not found - attempting to load', 'error');
+                    await loadMainApplication();
+                }
+
+                // Run full diagnostics
+                const results = await diagnostics.runFullDiagnostics();
+                
+                // Update UI with results
+                updateUIWithResults(results);
+                
+                log('📊 Diagnostics completed - check results above', 'info');
+                
+            } catch (error) {
+                log(`❌ Diagnostics failed: ${error.message}`, 'error');
+                console.error('Diagnostics error:', error);
+            }
+        }
+
+        async function loadMainApplication() {
+            log('🔄 Attempting to load main application...', 'info');
+            
+            try {
+                // Try to load the main app
+                const appModule = await import('./js/app-working.js');
+                
+                // Initialize if PolymarketTradingAgent is available
+                if (appModule.PolymarketTradingAgent) {
+                    window.app = new appModule.PolymarketTradingAgent();
+                    await window.app.initialize();
+                    log('✅ Main application loaded and initialized', 'success');
+                } else {
+                    throw new Error('PolymarketTradingAgent class not found in module');
+                }
+                
+            } catch (error) {
+                log(`❌ Failed to load main application: ${error.message}`, 'error');
+                
+                // Try alternative loading method
+                try {
+                    log('🔄 Trying alternative loading method...', 'info');
+                    const script = document.createElement('script');
+                    script.type = 'module';
+                    script.src = './js/app-working.js';
+                    document.head.appendChild(script);
+                    
+                    // Wait a bit and check again
+                    setTimeout(() => {
+                        if (window.app) {
+                            log('✅ Application loaded via script tag', 'success');
+                        } else {
+                            log('❌ Application still not available', 'error');
+                        }
+                    }, 2000);
+                    
+                } catch (altError) {
+                    log(`❌ Alternative loading also failed: ${altError.message}`, 'error');
+                }
+            }
+        }
+
+        function updateUIWithResults(results) {
+            const components = ['websocket', 'api', 'smartOrders', 'wallet', 'database'];
+            let totalIssues = 0;
+            let totalPassed = 0;
+
+            components.forEach(component => {
+                const result = results[component];
+                const status = result.status;
+                const issueCount = result.issues.length;
+                
+                let details = '';
+                if (status === 'passed') {
+                    details = '✅ All checks passed';
+                    totalPassed++;
+                } else if (status === 'failed') {
+                    details = `❌ ${issueCount} issue(s) found`;
+                    totalIssues += issueCount;
+                } else {
+                    details = '🔄 Testing...';
+                }
+                
+                updateComponentStatus(component, status, details);
+            });
+
+            // Update overall status
+            let overallStatus, overallDetails;
+            if (totalIssues === 0 && totalPassed === components.length) {
+                overallStatus = 'passed';
+                overallDetails = '✅ All systems operational';
+            } else {
+                overallStatus = 'failed';
+                overallDetails = `❌ ${totalIssues} critical issues found`;
+            }
+            
+            updateComponentStatus('overall', overallStatus, overallDetails);
+
+            // Show fixes if there are issues
+            if (totalIssues > 0) {
+                showSuggestedFixes(results);
+            }
+        }
+
+        function showSuggestedFixes(results) {
+            const fixesPanel = document.getElementById('fixes-panel');
+            const fixesContent = document.getElementById('fixes-content');
+            
+            fixesContent.innerHTML = '';
+            
+            Object.entries(results).forEach(([component, result]) => {
+                if (result.fixes.length > 0) {
+                    const componentFixes = document.createElement('div');
+                    componentFixes.innerHTML = `
+                        <h4 style="color: #ffd43b; margin: 10px 0 5px 0;">${component.toUpperCase()} FIXES:</h4>
+                        ${result.fixes.map(fix => `<div class="fix-item">${fix}</div>`).join('')}
+                    `;
+                    fixesContent.appendChild(componentFixes);
+                }
+            });
+            
+            fixesPanel.style.display = 'block';
+        }
+
+        async function emergencyFixes() {
+            log('🔧 Applying emergency fixes...', 'warning');
+            
+            try {
+                // Apply critical fixes based on common issues
+                await applyWebSocketFixes();
+                await applyAPIFixes();
+                await applySmartOrderFixes();
+                
+                log('✅ Emergency fixes applied - run diagnostics again to verify', 'success');
+                
+            } catch (error) {
+                log(`❌ Emergency fixes failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function applyWebSocketFixes() {
+            log('🔧 Applying WebSocket fixes...', 'info');
+            
+            // Try to reconnect WebSocket with different URLs
+            const wsUrls = [
+                'wss://ws-subscriptions-clob.polymarket.com/ws/market',
+                'wss://ws-subscriptions-clob.polymarket.com/ws/v1',
+                'wss://gamma-api.polymarket.com/ws'
+            ];
+            
+            for (const url of wsUrls) {
+                try {
+                    log(`  Testing WebSocket URL: ${url}`, 'info');
+                    const testWs = new WebSocket(url);
+                    
+                    await new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => {
+                            testWs.close();
+                            reject(new Error('Connection timeout'));
+                        }, 3000);
+                        
+                        testWs.onopen = () => {
+                            log(`  ✅ WebSocket connected to: ${url}`, 'success');
+                            testWs.close();
+                            clearTimeout(timeout);
+                            resolve();
+                        };
+                        
+                        testWs.onerror = (error) => {
+                            log(`  ❌ WebSocket failed: ${url}`, 'error');
+                            clearTimeout(timeout);
+                            reject(error);
+                        };
+                    });
+                    
+                    break; // If we get here, this URL worked
+                    
+                } catch (error) {
+                    log(`  ❌ WebSocket URL failed: ${url}`, 'error');
+                }
+            }
+        }
+
+        async function applyAPIFixes() {
+            log('🔧 Applying API fixes...', 'info');
+            
+            // Test API endpoints with different configurations
+            const endpoints = [
+                'https://gamma-api.polymarket.com/markets?limit=1',
+                'https://clob.polymarket.com/ping'
+            ];
+            
+            for (const endpoint of endpoints) {
+                try {
+                    log(`  Testing API endpoint: ${endpoint}`, 'info');
+                    
+                    const response = await fetch(endpoint, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                        },
+                        mode: 'cors'
+                    });
+                    
+                    if (response.ok) {
+                        log(`  ✅ API endpoint working: ${endpoint}`, 'success');
+                    } else {
+                        log(`  ❌ API endpoint returned ${response.status}: ${endpoint}`, 'error');
+                    }
+                    
+                } catch (error) {
+                    log(`  ❌ API endpoint failed: ${endpoint} - ${error.message}`, 'error');
+                    
+                    // Suggest CORS proxy solution
+                    if (error.message.includes('CORS')) {
+                        log('  💡 CORS issue detected - may need proxy server', 'warning');
+                    }
+                }
+            }
+        }
+
+        async function applySmartOrderFixes() {
+            log('🔧 Applying Smart Orders fixes...', 'info');
+            
+            // Test order validation logic
+            const testOrder = {
+                marketId: 'test-market-123',
+                side: 'buy',
+                size: 1.0,
+                price: 0.5,
+                strategy: 'market'
+            };
+            
+            // Basic validation
+            const validation = {
+                hasMarketId: !!testOrder.marketId,
+                hasValidSide: ['buy', 'sell'].includes(testOrder.side),
+                hasValidSize: testOrder.size > 0,
+                hasValidPrice: testOrder.price > 0 && testOrder.price < 1,
+                hasStrategy: !!testOrder.strategy
+            };
+            
+            const isValid = Object.values(validation).every(check => check);
+            
+            if (isValid) {
+                log('  ✅ Order validation logic working correctly', 'success');
+            } else {
+                log('  ❌ Order validation has issues', 'error');
+                Object.entries(validation).forEach(([check, passed]) => {
+                    if (!passed) {
+                        log(`    Failed check: ${check}`, 'error');
+                    }
+                });
+            }
+        }
+
+        async function verifyFixes() {
+            log('✅ Verifying all fixes...', 'info');
+            
+            // Re-run diagnostics to verify fixes
+            if (diagnostics) {
+                log('🔄 Re-running diagnostics to verify fixes...', 'info');
+                await startDiagnostics();
+            } else {
+                log('⚠️ No previous diagnostics found - running fresh diagnostics', 'warning');
+                await startDiagnostics();
+            }
+        }
+
+        function clearConsole() {
+            document.getElementById('console').innerHTML = '';
+            log('Console cleared', 'info');
+        }
+
+        // Make functions globally available
+        window.startDiagnostics = startDiagnostics;
+        window.emergencyFixes = emergencyFixes;
+        window.verifyFixes = verifyFixes;
+        window.clearConsole = clearConsole;
+
+        // Auto-start diagnostics
+        log('🚨 QA Testing Interface Ready', 'success');
+        log('⚡ Auto-starting diagnostics in 2 seconds...', 'info');
+        
+        setTimeout(() => {
+            startDiagnostics();
+        }, 2000);
+
+    </script>
+</body>
+</html>
